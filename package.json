@@ -1,6 +1,6 @@
 {
   "name": "ibmmq-core",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "ibmmq-core",
   "main": "./lib/index.js",
   "types": "./src/index.ts",
@@ -9,6 +9,7 @@
     "clean:lib": "rimraf lib"
   },
   "devDependencies": {
+    "@types/node": "^17.0.7",
     "tslint": "5.10.0",
     "typescript": "^3.8.3"
   },

@@ -5,10 +5,6 @@ export interface Message<T> {
   id?: string;
   data: T;
 }
-export function createConsumer<T>(conf: IBMMQConfig, logError: (msg: string) => void, logInfo?: (msg: string) => void, json?: boolean): Consumer<T> {
-  return new Consumer<T>(conf, logError, logInfo, json);
-}
-
 function formatErr(err: { message: string; }) {
   if (err) {
     return 'MQ call failed at ' + err.message;
@@ -44,6 +40,7 @@ export const hexToBytes = (hex: string): number[] => {
 export function bytesToString(array: number[]): string {
   return String.fromCharCode.apply(String, array);
 }
+export type Hanlde<T> = (data: T, attributes?: StringMap, raw?: Message<T>) => Promise<number>;
 export class Consumer<T> {
   private readonly mq: any;
   private interval: any;
@@ -71,17 +68,25 @@ export class Consumer<T> {
       this.MQC.MQGMO_FAIL_IF_QUIESCING;
     this.gmo.MatchOptions = this.MQC.MQMO_NONE;
     this.get = this.get.bind(this);
+    this.receive = this.receive.bind(this);
+    this.read = this.read.bind(this);
     this.consume = this.consume.bind(this);
     this.subscribe = this.subscribe.bind(this);
     this.queue = this.queue.bind(this);
   }
-  get(handle: (data: T, attributes?: StringMap, raw?: Message<T>) => Promise<number>): void {
+  get(handle: Hanlde<T>): void {
     this.subscribe(handle);
   }
-  consume(handle: (data: T, attributes?: StringMap, raw?: Message<T>) => Promise<number>): void {
+  receive(handle: Hanlde<T>) {
+    return this.subscribe(handle);
+  }
+  read(handle: Hanlde<T>) {
+    return this.subscribe(handle);
+  }
+  consume(handle: Hanlde<T>): void {
     this.subscribe(handle);
   }
-  subscribe(handle: (data: T, attributes?: StringMap, raw?: Message<T>) => Promise<number>): void {
+  subscribe(handle: Hanlde<T>): void {
     // Import any other packages needed
     const StringDecoder = this.stringdecoderLib.StringDecoder;
     const decoder = new StringDecoder('utf8');
@@ -103,7 +108,7 @@ export class Consumer<T> {
       this.mq.Get(hObj, this.mqmd, this.gmo, getCBSub);
     };
 
-    const getCBSub = async (err: { mqrc?: any; message?: string; }, hObj: any, gmo: any, md: { Format: string; }, buf: string, hConn: any) => {
+    const getCBSub = async (err: { mqrc?: any; message?: string; }, hObj: any, gmo: any, md: { Format: string; }, buf: string) => {
       // If there is an error, prepare to exit by setting the ok flag to false.
       if (err) {
         if (err.mqrc === this.MQC.MQRC_NO_MSG_AVAILABLE) {
@@ -222,7 +227,7 @@ export class Consumer<T> {
      * include the message descriptor and the buffer containing
      * the message data.
      */
-    const getCB = async (err: { mqrc?: any; message?: string; }, hObj: any, gmo: any, md: { Format: string; }, buf: string, hConn: any) => {
+    const getCB = async (err: { mqrc?: any; message?: string; }, hObj: any, gmo: any, md: { Format: string; }, buf: string) => {
       // If there is an error, prepare to exit by setting the ok flag to false.
       if (err) {
         if (err.mqrc === MQC.MQRC_NO_MSG_AVAILABLE) {
@@ -298,3 +303,6 @@ export class Consumer<T> {
     });
   }
 }
+export const Subscriber = Consumer;
+export const Reader = Consumer;
+export const Receiver = Consumer;
